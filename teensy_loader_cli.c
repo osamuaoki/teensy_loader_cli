@@ -33,20 +33,56 @@
 #include <string.h>
 #include <unistd.h>
 
+char *commandname;
+
+// USB ID for Teensy firmware
+#define VID_TEENSY 0x16C0
+#define PID_TEENSY 0x0478
+#define PID_TEENSY_SOFT 0x0483
+#define PID_TEENSY_HARD 0x0477
+// USB ID for LUFA HID firmware
+#define VID_LUFA_HID 0x03eb
+#define PID_LUFA_HID 0x2067
+
+// Set default USB ID to Teensy one
+int vendor_id = VID_TEENSY;
+int product_id = PID_TEENSY;
+int product_id_soft = PID_TEENSY_SOFT;
+int product_id_hard = PID_TEENSY_HARD;
+void default_teensy()
+{
+	vendor_id = VID_TEENSY;
+	product_id = PID_TEENSY;
+}
+void default_lufa()
+{
+	vendor_id = VID_LUFA_HID;
+	product_id = PID_LUFA_HID;
+}
+
 void usage(const char *err)
 {
 	if(err != NULL) fprintf(stderr, "%s\n\n", err);
 	fprintf(stderr,
-		"Usage: teensy_loader_cli --mcu=<MCU> [-w] [-h] [-n] [-b] [-v] <file.hex>\n"
+		"Usage: %s [-w] [-h] [-n] [-b] [-v] [--...] <file.hex>\n"
 		"\t-w : Wait for device to appear\n"
 		"\t-r : Use hard reboot if device not online\n"
 		"\t-s : Use soft reboot if device not online (Teensy3.x only)\n"
 		"\t-n : No reboot after programming\n"
 		"\t-b : Boot only, do not program\n"
 		"\t-v : Verbose output\n"
-		"\nUse `teensy_loader_cli --list-mcus` to list supported MCUs.\n"
-		"\nFor more information, please visit:\n"
-		"http://www.pjrc.com/teensy/loader_cli.html\n");
+		"\t--mcu=<MCU> : Set target MCU to <MCU>\n"
+		"\t--vid=<VID> : Set target USB vendor ID to <VID>\n"
+		"\t--pid=<PID> : Set target USB product ID to <PID>\n"
+		"\t--teensy : Set target USB IDs to Teensy firmware ones\n"
+		"\t--lufa : Set target USB IDs to LUFA HID firmware ones\n"
+		"\nUse `%s --list-mcus` to list supported MCUs.\n"
+		"\nDefault USB ID values: VID=0x%04x PID=0x%04x\n"
+		"\nFor more information on this modified version, please visit:\n"
+		"https://github.com/osamuaoki/teensy_loader_cli\n"
+		"\nFor more information on the original version, please visit:\n"
+		"http://www.pjrc.com/teensy/loader_cli.html\n",
+		commandname, commandname, vendor_id, product_id);
 	exit(1);
 }
 
@@ -80,7 +116,6 @@ int boot_only = 0;
 int code_size = 0, block_size = 0;
 const char *filename=NULL;
 
-
 /****************************************************************/
 /*                                                              */
 /*                       Main Program                           */
@@ -95,6 +130,7 @@ int main(int argc, char **argv)
 
 	// parse command line arguments
 	parse_options(argc, argv);
+	printf_verbose("USB Vendor ID=0X%04X, Product ID=0X%04X\n", vendor_id, product_id);
 	if (!filename && !boot_only) {
 		usage("Filename must be specified");
 	}
@@ -282,7 +318,7 @@ static usb_dev_handle *libusb_teensy_handle = NULL;
 int teensy_open(void)
 {
 	teensy_close();
-	libusb_teensy_handle = open_usb_device(0x16C0, 0x0478);
+	libusb_teensy_handle = open_usb_device(vendor_id, product_id);
 	if (libusb_teensy_handle) return 1;
 	return 0;
 }
@@ -316,7 +352,7 @@ int hard_reboot(void)
 	usb_dev_handle *rebootor;
 	int r;
 
-	rebootor = open_usb_device(0x16C0, 0x0477);
+	rebootor = open_usb_device(vendor_id, product_id_hard);
 	if (!rebootor) return 0;
 	r = usb_control_msg(rebootor, 0x21, 9, 0x0200, 0, "reboot", 6, 100);
 	usb_release_interface(rebootor, 0);
@@ -329,7 +365,7 @@ int soft_reboot(void)
 {
 	usb_dev_handle *serial_handle = NULL;
 
-	serial_handle = open_usb_device(0x16C0, 0x0483);
+	serial_handle = open_usb_device(vendor_id, product_id_soft);
 	if (!serial_handle) {
 		char *error = usb_strerror();
 		printf("Error opening USB device: %s\n", error);
@@ -468,7 +504,7 @@ static HANDLE win32_teensy_handle = NULL;
 int teensy_open(void)
 {
 	teensy_close();
-	win32_teensy_handle = open_usb_device(0x16C0, 0x0478);
+	win32_teensy_handle = open_usb_device(vendor_id, product_id);
 	if (win32_teensy_handle) return 1;
 	return 0;
 }
@@ -503,7 +539,7 @@ int hard_reboot(void)
 	HANDLE rebootor;
 	int r;
 
-	rebootor = open_usb_device(0x16C0, 0x0477);
+	rebootor = open_usb_device(vendor_id, product_id_hard);
 	if (!rebootor) return 0;
 	r = write_usb_device(rebootor, "reboot", 6, 100);
 	CloseHandle(rebootor);
@@ -661,7 +697,7 @@ static IOHIDDeviceRef iokit_teensy_reference = NULL;
 int teensy_open(void)
 {
 	teensy_close();
-	iokit_teensy_reference = open_usb_device(0x16C0, 0x0478);
+	iokit_teensy_reference = open_usb_device(vendor_id, product_id);
 	if (iokit_teensy_reference) return 1;
 	return 0;
 }
@@ -699,7 +735,7 @@ int hard_reboot(void)
 	IOHIDDeviceRef rebootor;
 	IOReturn ret;
 
-	rebootor = open_usb_device(0x16C0, 0x0477);
+	rebootor = open_usb_device(vendor_id, product_id_hard);
 	if (!rebootor) return 0;
 	ret = IOHIDDeviceSetReport(rebootor,
 		kIOHIDReportTypeOutput, 0, (uint8_t *)("reboot"), 6);
@@ -779,7 +815,7 @@ static int uhid_teensy_fd = -1;
 int teensy_open(void)
 {
 	teensy_close();
-	uhid_teensy_fd = open_usb_device(0x16C0, 0x0478);
+	uhid_teensy_fd = open_usb_device(vendor_id, product_id);
 	if (uhid_teensy_fd < 0) return 0;
 	return 1;
 }
@@ -806,7 +842,7 @@ int hard_reboot(void)
 {
 	int r, rebootor_fd;
 
-	rebootor_fd = open_usb_device(0x16C0, 0x0477);
+	rebootor_fd = open_usb_device(vendor_id, product_id_hard);
 	if (rebootor_fd < 0) return 0;
 	r = write(rebootor_fd, "reboot", 6);
 	delay(0.1);
@@ -1105,6 +1141,34 @@ void read_mcu(char *name)
 }
 
 
+void read_vid(char *vid)
+{
+	if(vid == NULL) {
+		fprintf(stderr, "No Vendor ID specified.\n");
+		exit(1);
+	}
+
+	if(!sscanf(vid, "%06x", &vendor_id)) {
+		fprintf(stderr, "Error reading Product ID.\n");
+		exit(1);
+	}
+}
+
+
+void read_pid(char *pid)
+{
+	if(pid == NULL) {
+		fprintf(stderr, "No Product ID specified.\n");
+		exit(1);
+	}
+
+	if(!sscanf(pid, "%06x", &product_id)) {
+		fprintf(stderr, "Error reading Product ID.\n");
+		exit(1);
+	}
+}
+
+
 void parse_flag(char *arg)
 {
 	int i;
@@ -1129,6 +1193,21 @@ void parse_options(int argc, char **argv)
 	int i;
 	char *arg;
 
+	#ifdef WIN32
+	commandname = strrchr(argv[0], '\\');
+	#else
+	commandname = strrchr(argv[0], '/');
+	#endif
+	if(!commandname) {
+		commandname = argv[0];
+	}
+	else {
+		commandname++;
+	}
+	if(commandname[0] != 't') {
+		default_lufa();
+	}
+
 	for (i=1; i<argc; i++) {
 		arg = argv[i];
 
@@ -1141,7 +1220,13 @@ void parse_options(int argc, char **argv)
 			if(arg[1] == '-') {
 				char *name = &arg[2];
 				char *val  = strchr(name, '=');
-				if(val == NULL) {
+				if(strncmp(name, "teensy", 6) == 0) {
+					default_teensy();
+				}
+				else if(strncmp(name, "lufa", 4) == 0) {
+					default_lufa();
+				}
+				else if(val == NULL) {
 					//value must be the next string.
 					val = argv[++i];
 				}
@@ -1153,6 +1238,10 @@ void parse_options(int argc, char **argv)
 
 				if(strcasecmp(name, "help") == 0) usage(NULL);
 				else if(strcasecmp(name, "mcu") == 0) read_mcu(val);
+				else if(strcasecmp(name, "teensy") == 0) /* nop */;
+				else if(strcasecmp(name, "lufa") == 0) /* nop */;
+				else if(strcasecmp(name, "vid") == 0) read_vid(val);
+				else if(strcasecmp(name, "pid") == 0) read_pid(val);
 				else if(strcasecmp(name, "list-mcus") == 0) list_mcus();
 				else {
 					fprintf(stderr, "Unknown option \"%s\"\n\n", arg);

@@ -1,10 +1,20 @@
-#Teensy Loader - Command Line Version#
+# Teensy Loader - Command Line Version (modified)
 
-The Teensy Loader is available in a command line version for advanced users who want to automate programming, typically using a Makefile. For most uses, the graphical version in Automatic Mode is much easier. 
+**This is a modified version of Teensy Loader supporting not only Teensy firmware but also LUFA HID firmware by Osamu Aoki**
+
+https://github.com/osamuaoki/teensy_loader_cli
+
+If the command is started with `--teensy` option or its command starts with `t`, this compiled command acts the same as original `teensy_loader_cli`.
+
+If the command is started with `--lufa` option or its command doesn't start with `t`, this compiled command acts the same as original `hid_bootloader_cli`.
+
+Please don't bother the original upstream author with bugs with this version.
+
+The original version of Teensy Loader is available in a command line version for advanced users who want to automate programming, typically using a Makefile. For most uses, the graphical version in Automatic Mode is much easier. 
 
 http://www.pjrc.com/teensy/loader_cli.html
 
-##Compiling From Source
+## Compiling From Source
 
 The command line version is provided as source code for most platforms. To compile, you must have gcc or mingw installed. Edit the Makefile to select your operating system, then just type "make". If you have a BSD compatible make, replace "Makefile" with "Makefile.bsd".
 Version 2.0 has been tested on Ubuntu 9.04, Mac OS-X 10.5, Windows XP, FreeBSD 8.0, OpenBSD (20-Jan-2010 snapshot), and NetBSD 5.0.1. All versions of NT-based Windows with USB support (2000 and later) are believed to work.
@@ -13,7 +23,7 @@ On Ubuntu, you may need to install "libusb-dev" to compile.
 
   `sudo apt-get install libusb-dev`
 
-##Usage and Command Line Options
+## Usage and Command Line Options
 
 A typical usage from the command line may look like this:
 
@@ -48,7 +58,15 @@ Optional command line parameters:
 
 `-v` : Verbose output. Normally teensy_loader_cli prints only error messages if any operation fails. This enables verbose output, which can help with troubleshooting, or simply show you more status information.
 
-##System Specific Setup
+`--teensy`: Use USB Vender ID: 0x16C0 and Product ID: 0x0477 (default)
+
+`--lufa`: Use USB Vender ID: 0x03eb and Product ID: 0x2067 (LUFA HID firmware)
+
+`--vid=0xnnnn`: Use USB Vender ID: 0xnnnn.
+
+`--pid=0xnnnn`: Use USB Product ID: 0xnnnn.
+
+## System Specific Setup
 
 Linux requires UDEV rules for non-root users.
 
@@ -63,7 +81,7 @@ On Macintosh OS-X 10.8, Casey Rodarmor shared this tip:
 I recently had a little trouble getting the teensy cli loader working on Mac OSX 10.8. Apple moved the location of the SDKs around, so that they now reside inside of the xcode app itself. This is the line in the makefile that got it working for me:
 SDK ?= /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk
 
-##Makefile Integration
+## Makefile Integration
 
 You can use teensy_loader_cli from your Makefile, to autoamtically program your freshly compiled code. Here is an example:
 
@@ -82,11 +100,11 @@ If you connect a second Teensy using the rebootor code, add the "-r" option and 
 
 Scott Bronson contributed a [Makefile patch](http://www.pjrc.com/teensy/loader_cli.makefile.patch) to allow "make program" to work for the blinky example.
 
-##PlatformIO Integration
+## PlatformIO Integration
 
 [Platformio](http://platformio.org) includes support for loading via teensy_loader.
 
-##Errata
+## Errata
 
 Compiling on Mac OS-X 10.6 may require adding "-mmacosx-version-min=10.5" to the Makefile. Thanks to Morgan Sutherland for reporting this.
 
