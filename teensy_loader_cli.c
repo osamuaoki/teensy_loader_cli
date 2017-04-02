@@ -484,19 +484,8 @@ int write_usb_device(HANDLE h, void *buf, int len, int timeout)
 		if (r != WAIT_OBJECT_0) return 0;
 	}
 	if (!GetOverlappedResult(h, &ov, &n, FALSE)) return 0;
-	if (n <= 0) return 0;
+	// if (n <= 0) return 0; /* LUFA HID remove this line */
 	return 1;
-}
-
-void print_win32_err(void)
-{
-        char buf[256];
-        DWORD err;
-
-        err = GetLastError();
-        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, err,
-                0, buf, sizeof(buf), NULL);
-        printf("err %ld: %s\n", err, buf);
 }
 
 static HANDLE win32_teensy_handle = NULL;
@@ -824,7 +813,7 @@ int teensy_write(void *buf, int len, double timeout)
 {
 	int r;
 
-	// TODO: imeplement timeout... how??
+	// TODO: implement timeout... how??
 	r = write(uhid_teensy_fd, buf, len);
 	if (r == len) return 1;
 	return 0;
@@ -905,6 +894,7 @@ int read_intel_hex(const char *filename)
 		if (*buf) {
 			if (parse_hex_line(buf) == 0) {
 				printf("Warning, HEX parse error line %d\n", lineno);
+				fclose(fp);
 				return -2;
 			}
 		}
@@ -1044,20 +1034,20 @@ int memory_is_blank(int addr, int block_size)
 int printf_verbose(const char *format, ...)
 {
 	va_list ap;
-	int r;
+	int r = 0;
 
 	va_start(ap, format);
 	if (verbose) {
 		r = vprintf(format, ap);
 		fflush(stdout);
-		return r;
 	}
-	return 0;
+	va_end(ap);
+	return r;
 }
 
 void delay(double seconds)
 {
-	#ifdef WIN32
+	#ifdef USE_WIN32
 	Sleep(seconds * 1000.0);
 	#else
 	usleep(seconds * 1000000.0);
@@ -1071,10 +1061,11 @@ void die(const char *str, ...)
 	va_start(ap, str);
 	vfprintf(stderr, str, ap);
 	fprintf(stderr, "\n");
+	va_end(ap);
 	exit(1);
 }
 
-#if defined(WIN32)
+#if defined(USE_WIN32)
 #define strcasecmp stricmp
 #endif
 
@@ -1193,7 +1184,7 @@ void parse_options(int argc, char **argv)
 	int i;
 	char *arg;
 
-	#ifdef WIN32
+	#ifdef USE_WIN32
 	commandname = strrchr(argv[0], '\\');
 	#else
 	commandname = strrchr(argv[0], '/');
